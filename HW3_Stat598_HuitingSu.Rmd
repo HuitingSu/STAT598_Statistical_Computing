@@ -1,0 +1,139 @@
+---
+title: "Stat598 HW3 -- dataframes and ggplot2"
+author: "Huiting Su"
+date: "February 19, 2018"
+output: html_document
+---
+(a) Install
+```{r, warning=FALSE, message=FALSE}
+#install.packages('maps')
+library(maps)
+library(ggplot2)
+library(dplyr)
+#install.packages('ggforce')
+library(ggforce)
+```
+(b) State map dataframe.
+```{r}
+states_map <- map_data(map = "state")
+dim(states_map)
+colnames(states_map)
+```
+(c) Unique value.
+```{r}
+unique(states_map$region)
+```
+
+(d)
+```{r}
+g <- ggplot(states_map, aes(x=long, y=lat, color=region)) + geom_point() + guides(colour=FALSE)
+g
+```
+
+(e) Connect the points with lines.
+```{r}
+g + geom_line()
+g + geom_path()
+```
+
+We can see geom_path is more appropriate. According to the help doc, geom_path() connects the observations in the order in which they appear in the data. geom_line() connects them in order of the variable on the x axis.
+
+(f)
+```{r}
+state2 <- states_map[states_map$region=="california" | states_map$region== "colorado",]
+ggplot(state2, aes(x=long, y=lat, color=region)) + geom_point()  + geom_path()
+```
+(g)
+```{r}
+set.seed(4365)
+state2_random <- state2[sample(1:dim(state2)[1]),]
+ggplot(state2_random, aes(x=long, y=lat, color=region)) + geom_point()  + geom_path()
+```
+
+(h)
+```{r}
+ggplot() + 
+    geom_map(map = states_map, map_id=states_map$region, data = states_map, aes(fill=group))+ 
+    expand_limits(x = states_map$long, y = states_map$lat)
+```
+
+(i) Add State ID.
+```{r}
+regions<- unique(states_map$region)
+n <- length(regions)
+regions <- cbind.data.frame(stateid=1:n, region=regions)
+states_map <- merge(states_map, regions)
+```
+
+```{r}
+ggplot() + 
+    geom_map(map = states_map, map_id=states_map$region, data = states_map, aes(fill=stateid))+ 
+    expand_limits(x = states_map$long, y = states_map$lat)
+```
+
+(j) Add murder arrests per 100,000 people for different states.
+```{r}
+data(state)
+states_map$InfoValue <- state.x77[match(states_map$region,tolower(rownames(state.x77))),5]
+```
+
+(k) Label and bind dataframes.
+```{r}
+states_map$InfoType = "Murder"
+states_map2 <- states_map
+states_map2$InfoType <- "Grad"
+states_map2$InfoValue <- state.x77[match(states_map$region,tolower(rownames(state.x77))),6]
+statesbind <- rbind(states_map, states_map2)
+```
+
+
+(l) Plot.
+```{r}
+#ggplot() + 
+#    geom_map(map = statesbind, map_id=statesbind$region, data = statesbind, aes(fill=InfoValue))+ 
+#    expand_limits(x = statesbind$long, y = statesbind$lat) + facet_grid(.~InfoType)
+```
+Unfortunately, the method mentioned in the HW instruction does not work for me, so I use "melt" function instead.
+```{r}
+Infos <- data.frame(state = tolower(rownames(state.x77)), state.x77[,5:6])
+Infosmelt <- reshape2::melt(Infos, id = 1)
+ggplot(Infosmelt, aes(map_id = state)) +
+    geom_map(aes(fill = value), map = states_map) +
+    expand_limits(x = states_map$long, y = states_map$lat) +
+    facet_grid( ~ variable)
+```
+
+
+(m) Calculate dataframe of circle center.
+```{r}
+by_state <- group_by(states_map, State= region)
+states_circle <- summarize(by_state, MeanLong = mean(long), MeanLat = mean(lat))
+states_circle$ArrentCount <- state.x77[match(states_circle$State,tolower(rownames(state.x77))),3]
+```
+
+```{r, warning=FALSE, message=FALSE}
+ggplot() + 
+    geom_circle(aes(x0=MeanLong, y0=MeanLat, r=ArrentCount, fill=State), data=states_circle) + 
+    guides(fill=FALSE)
+```
+
+(n)
+```{r}
+X <- unique(states_map$region)
+fun <- function(statename) 
+{
+    MeanLong <- mean(states_map$long[states_map$region==statename])
+    MeanLat <- mean(states_map$lat[states_map$region==statename])
+    c(MeanLong, MeanLat) 
+}
+circle2 <- data.frame(t(sapply(X, fun)))
+colnames(circle2) <- c('MeanLong', 'MeanLat')
+head(circle2)
+head(states_circle)
+```
+
+The two dataframes are the same.
+
+
+
+

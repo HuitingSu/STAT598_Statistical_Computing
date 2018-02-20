@@ -1,0 +1,169 @@
+---
+title: "STAT598zHW1"
+author: "Huiting Su"
+date: "January 24, 2018"
+output: html_document
+---
+## 1 Problem 1: The seq() function
+1. The starting point is "from", and "to" is the end. Increment is "by", and "length.out" is the desired length.
+```{r}
+x <- seq(from=1, to=10, by=2)
+x
+seq(10, 1, length.out=5)
+seq(10, 1, along.with=x)
+```
+
+2. If "to" is not specified, then the sequence length is  1:from. If "by" is not specified, the defaut value is 1. 
+```{r}
+seq(10)
+seq(3,10)
+```
+
+3. When you pass seq() a vector, it returns a sequence of same length, starting from 1 and increment by 1.  
+```{r}
+seq(along.with=x)
+```
+
+4.  If the vector is of length 1, it is interpreted as 1:from, instead of "along.with".
+```{r}
+y <- seq.int(3,3,1)
+y
+seq(y)
+```
+
+5.It is preferable to use seq_along() in this case.
+```{r}
+seq_along(x)
+seq_along(y)
+```
+
+6.
+```{r}
+z <- as.integer(seq_len(8)+2)
+z
+typeof(z)
+```
+7. For positive case it is 1:num. For negative case it is error.
+```{r}
+seq_len(8)
+#seq_len(-8)
+```
+
+## 2 Problem 2: Vectors
+1. 
+```{r}
+letters
+summary(letters)
+```
+2. 
+```{r}
+typeof(letters)
+```
+
+3. 
+```{r}
+len <- length(letters)
+len
+```
+
+4. 
+```{r}
+alterletter <- letters[seq(1,len,2)]
+alterletter
+```
+
+5. 
+```{r}
+backletter <- letters[seq(len,1)]
+backletter
+```
+6. 
+```{r}
+alterback <- letters[seq(len,1,-2)]
+alterback
+```
+
+7. 
+```{r}
+matrix(letters[1:16],4,4)
+```
+
+8. Built-in Constants are LETTERS, letters, month.abb, month.name, pi.
+```{r}
+c(typeof(month.abb),typeof(month.name),typeof(pi))
+```
+
+## 3 Problem 3: Matrices
+1. 
+```{r}
+m <- matrix(runif(20),4,5)
+```
+
+2. It is an array, and it is not an 1 dimension matrix. There is no dim attribute.
+```{r}
+m[3,]
+dim(m[3,])
+```
+
+3. In this way, the result is not coerced to the lowest possible dimension, which means it is still a matrix.
+```{r}
+m[3,,drop=FALSE]
+dim(m[3,,drop=FALSE])
+```
+
+4. 
+```{r}
+sum(m)
+```
+
+5.
+```{r}
+m <- m/sum(m)
+sum(m)
+```
+
+6.
+```{r}
+rowSums(m)
+colSums(m)
+```
+
+7.
+```{r}
+m <- m/rowSums(m)
+rowSums(m)
+```
+
+8.Transpose.
+```{r}
+dim(t(m))
+```
+
+9.
+```{r}
+m <- t(t(m)/colSums(m))
+colSums(m)
+```
+
+10. First every other element mving along the columns, then rows.
+```{r}
+m2 <- matrix(runif(2*9),2,9)
+m2
+m2[seq(1,18,2)]
+t(m2)[seq(1,18,2)]
+```
+
+11. A vector of "1" and vector 2 are column bind to be a matrix. This matrix is then column bind with vector 3. However, by matrix indexing, vector 3 is put in between vector 1 and vector 2.  
+```{r}
+m <- cbind(1, 1:7) 
+# the ’1’ (= shorter vector) is recycled
+m
+m <- cbind(m, 8:14)[, c(1, 3, 2)] 
+# insert a column
+m
+
+```
+
+
+
+

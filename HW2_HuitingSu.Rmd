@@ -1,0 +1,117 @@
+---
+title: "Stats 598z:HW2"
+author: "Huiting Su"
+date: "February 5, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+## Problem 1: Rejection sampling from a truncated Gaussian
+1. Samples from a Gaussian distribution.
+```{r}
+set.seed(12654)
+sample1 <- rnorm(mean = 1, sd = 2, n = 10000)
+hist(sample1)
+```
+
+Sample from a truncated Gaussian:
+2. Write Function.
+```{r}
+trunc_norm <- function(tmean=0, tsd=1, lower=-Inf, upper=Inf, num_samp){
+    v <- numeric(num_samp) 
+    for(i in 1:num_samp){
+        while(1){
+            t <- rnorm(mean = tmean, sd = tsd, n= 1)
+            if(t < upper && t > lower)break()
+        }
+        v[i] <- t
+    }
+    v
+}
+```
+
+3. Plot the histogram of 10000 samples from a Gaussian with mean 1, standard deviation 2, truncated to
+(0; 5).
+```{r}
+set.seed(90654)
+sample2 <- trunc_norm(tmean = 1, tsd = 2, lower = 0,  upper = 5, num_samp = 10000)
+hist(sample2)
+```
+
+4. Introduce some vectorization.
+```{r}
+trunc_norm_vec <- function(tmean=0, tsd=1, lower=-Inf, upper=Inf, num_samp){
+    v=numeric()
+    while(length(v) < num_samp){
+        t <- rnorm(mean = tmean, sd = tsd, num_samp)
+        v <- c(v, t[t > lower & t<upper])
+    }
+    v[1:num_samp]
+}
+```
+
+5. Plot the same distribution. 
+```{r}
+set.seed(90654)
+sample3 <- trunc_norm_vec(tmean = 1, tsd = 2, lower = 0,  upper = 5, num_samp = 10000)
+hist(sample3)
+```
+
+6. Use system.time() to compare the efficiency of both functions.
+```{r}
+set.seed(90654)
+system.time(trunc_norm(1,2,0,5,1000000))
+system.time(trunc_norm_vec(1,2,0,5,1000000))
+```
+
+## Problem 2: Calculating entropy
+Calculate for 10000 probability distributions, each of which are 6-dimensional. 
+1. Generate samples and rescale.
+```{r}
+set.seed(7477)
+t1 <- matrix(rnorm(mean=1, sd=1, n=60000), 10000, 6)
+t1[t1 < 0] <- 0
+t1[rowSums(t1)>0] <- t1[rowSums(t1)>0]/rowSums(t1)[rowSums(t1)>0]
+```
+
+2. Calculate entropy.
+```{r}
+entropy <- function(v){
+    v <- v[v!=0]
+    return(-sum(v*log(v)))
+}
+entrp6 <- apply(t1,1,entropy)
+```
+
+3. Plot.
+```{r}
+hist(entrp6)
+```
+
+4. 
+```{r}
+entrp_max <- max(entrp6, na.rm=TRUE)
+entrp_max
+t1[entrp6==entrp_max,]
+```
+
+5.Make a guess about the probability distribution that has the theoretical maximum entropy.
+```{r}
+t1[entrp6==min(entrp6),]
+t2 <- t1[entrp6>0,]
+entrppos <- entrp6[entrp6>0]
+t2[entrppos==min(entrppos),]
+```
+
+First look at the distributions with lowest entropy 0. One of them is all zero, and the others all have a probability equal to 1. Look at the vector with the minimal positive entropy, only 2 of the variables are nonzero.
+```{r}
+entropy(rep(1/6,6))
+entropy(c(1,0,0,0,0,0))
+```
+
+It seems that the vector having maximum entropy is a vector whose probability is more even for the 6 dimensions. If the uncertainty of the distribution is very low, the entropy will also be very low. For example, look at the vector v=(1,0,0,0,0,0), the entropy is 0.  
+
+
+
+
+
