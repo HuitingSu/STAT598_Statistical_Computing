@@ -1,0 +1,149 @@
+---
+title: "K-nearest Neighbours"
+author: "Huiting Su"
+date: "March 6, 2018"
+output: html_document
+---
+This is a practice of k-nearest neighbours.  
+
+####(a) K-nearst Neighbours skeleton:
+x' <- x value of new test datapoint  
+train <- training data (X,Y)  
+distance <- train[order((train$X-x'))]   #calculate distance and sort  
+cfreq <- count(distance[1:k], vars= 'Y')  #count frequency of each label  
+y' <- cfreq[cfreq\$freq == max]\$Y  #the most frequent label is our prediction  
+
+####(b) Digits dataset contains 1100 examples of each digit.
+```{r, warning=FALSE, message=FALSE}
+#install.packages(RnavGraphImageData)
+library(RnavGraphImageData)
+data(digits)
+library(plyr)
+library(magrittr)
+```
+
+####(c) Visualize digits.
+```{r}
+plot_digit <- function(x){
+    m <- matrix(x, nrow=16, ncol=16, byrow = TRUE)
+    m <- apply(m, 1, rev)
+    m <- t(m)
+    image(m, col = gray(0:255/255))
+}
+```
+
+####(d) Plot first instance of each digit.
+```{r, fig.width=5, fig.height=5, message=FALSE}
+apply(digits[, seq(1, 5500, 1100)], 2, plot_digit)
+plot_digit(digits[, 5502])
+plot_digit(digits[, 6603])
+apply(digits[, seq(7701, 11000, 1100)], 2, plot_digit)
+```
+
+####(e) Convert to smaller dataset.
+```{r}
+get_digits <- function(select_digs, size){
+    index <- numeric()
+    select_digs[select_digs==0] <- 10
+    start <- (select_digs-1)*1100+1
+    for(ii in 1:length(start)){
+        index <- c(index, seq(start[ii], length.out = size))
+    }
+    return(digits[,index])
+}
+```
+
+```{r}
+select_digs <- c(0,8)
+size <- 100
+my_train <- get_digits(select_digs, size)
+```
+
+####(f) Calculate Euclidean distance.
+```{r}
+euc_dist <- function(a, b) (a-b)^2 %>% sum %>% sqrt
+```
+
+####(g) Calculate distance between new digit and every element in my_train.
+```{r}
+new_digit <- my_train[1]
+distances <- laply(my_train, euc_dist, new_digit)
+head(distances)
+```
+
+####(h) Function to find k-nearest neighbours.
+```{r}
+get_knn <- function(k, my_train, new_digit){
+    distances <- laply(my_train, euc_dist, new_digit)
+    indices <- sort(distances, index.return = TRUE)$ix
+    return(indices[1:k])
+}
+```
+
+####(i) Get label.
+```{r}
+my_labels <- rep(c(0, 8), each= 100)
+
+get_label <- function(kindices){
+    labels <- my_labels[kindices]
+    freq <- table(labels)
+    return(names(which.max(freq)))
+}
+```
+
+####(j) Wrap previous functions.
+```{r}
+my_knn <- function(k, my_train, my_labels, test_ip){
+    kindices <- get_knn(k, my_train, test_ip)
+    return(get_label(kindices))
+}
+```
+
+####(k) Test the function on training set.
+```{r, cache=TRUE}
+k <- 5
+prediction <- laply(my_train, my_knn, my_train = my_train, k = k, my_labels = my_labels)
+paste("my_knn got wrong ", sum(prediction[1:100] != my_labels[1:100]), " 0's.")
+paste("my_knn got wrong ", sum(prediction[101:200] != my_labels[101:200]), " 8's.")
+```
+
+####(l) Test the function on a testing set.
+```{r, cache=TRUE}
+my_test <- digits[,c(10000:10099, 7900:7999)]
+test_labels <- rep(c(0, 8), each =100) 
+prediction <- laply(my_test, my_knn, my_train = my_train, k = k, my_labels = my_labels)
+paste("my_knn got wrong ", sum(prediction[1:100] != test_labels[1:100]), " 0's.")
+paste("my_knn got wrong ", sum(prediction[101:200] != test_labels[101:200]), " 8's.")
+```
+
+Apply my_knn to one hundred 5's.
+```{r, cache=TRUE}
+my_test5 <- digits[,4900:4999]
+prediction <- laply(my_test5, my_knn, my_train = my_train, k = k, my_labels = my_labels)
+table(prediction)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
