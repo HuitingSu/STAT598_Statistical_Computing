@@ -1,0 +1,100 @@
+---
+title: "Ridge regression"
+author: "Huiting Su"
+date: "March 21, 2018"
+output: html_document
+---
+This is a practice of Ridge regression.  
+```{r, warning=FALSE, message=FALSE}
+
+```
+
+####(a) Solve.
+```{r}
+set.seed(2363)
+X <- matrix(rnorm(12), 3, 4)
+y <- matrix(rnorm(4), 4, 1)
+w <- solve(X %*% t(X), X %*% y)
+```
+
+####(b) Then the matrices are non-conformable. 
+
+####(c) 
+```{r}
+lambda <- 5
+w2 <- solve(X %*% t(X) + lambda, X %*% y)
+w2
+```
+No solution for (b).
+
+####(d) 
+```{r}
+train.ridge <- function(ip_data, lambda){
+    X <- ip_data[[1]]
+    y <- ip_data[[2]]
+    w <- solve(X %*% t(X) + lambda, X %*% y)
+    return(w)
+}
+train <- function(x) UseMethod('train')
+train(ip_data, lambda = 5)
+```
+
+####(e) 
+```{r}
+ip_data <- list(X, y)
+train.ridge(ip_data, lambda = 5)
+```
+
+####(f) Generic function.
+```{r}
+ip_list <- list(X, y, lambda)
+class(ip_list) <- 'ridge'
+train.ridge <- function(ip_data){
+    X <- ip_data[[1]]
+    y <- ip_data[[2]]
+    lambda <- ip_data[[3]]
+    w <- solve(X %*% t(X) + lambda, X %*% y)
+    return(w)
+}
+train <- function(x) UseMethod('train')
+train(ip_list)
+```
+
+####(g) Estimate error.
+```{r}
+pred_err.ridge <- function(w, obj){
+    X <- obj[[1]]
+    y <- obj[[2]]
+    norm(y - t(X) %*% w, type="2")
+}
+```
+
+```{r}
+pred_err(w, ip_list)
+```
+
+####(h) 
+```{r}
+crossval <- function(obj, lambdas, k){
+    
+}
+
+```
+
+####(i) 
+
+####(j) 
+```{r}
+
+
+```
+
+####(k) 
+```{r, cache=TRUE}
+
+```
+
+####(l) 
+```{r, cache=TRUE}
+```
+
