@@ -124,11 +124,3 @@ nbest <- which.min(mean_err)
 cat("The best lambda value is", lambdas[nbest])
 train(my_credit, lambdas[nbest])
 ```
-
-
-```{r, warning = FALSE, message = FALSE}
-library(glmnet)
-cv_fit <- cv.glmnet(t(X), y, alpha = 0, nfolds = 5, lambda = lambdas, intercept = FALSE, type.measure="mse")
-cv_fit$lambda[which.min(cv_fit$cvm)]
-plot(cv_fit)
-```
