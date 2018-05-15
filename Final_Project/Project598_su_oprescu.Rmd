@@ -1,0 +1,331 @@
+---
+title: "Final Project/ Stat598"
+author: "Stephanie Oprescu & Huiting Su"
+date: "4/20/2018"
+output: html_document
+---
+
+Huiting Su
+Stephanie Oprescu
+STAT598 Final Project
+
+CHROMOSOME 14 TESTS
+500KB
+```{r, warning = FALSE, message = FALSE}
+# assign the gene you want to read.
+ngene <- 14  # 5, 9, 10, 14
+
+chr14_raw <- read.table(paste("chr", ngene, "_500kb.RAWobserved", sep=''), sep='\t')
+
+chr14_Knorm <- read.csv(paste("chr", ngene, "_500kb.KRnorm", sep=''), header = F)
+
+chr14_raw_expected <- read.csv(paste("chr", ngene, "_500kb.RAWexpected", sep=''), header = F)
+
+#chr14_raw <- read.table("~/Downloads/CH12-LX/500kb_resolution_intrachromosomal/chr14/MAPQGE30/chr14_500kb.RAWobserved", sep='\t')
+
+#chr14_Knorm <- read.csv("~/Downloads/CH12-LX/500kb_resolution_intrachromosomal/chr14/MAPQGE30/chr14_500kb.KRnorm", header = F)
+
+#chr14_raw_expected <- read.csv("~/Downloads/CH12-LX/500kb_resolution_intrachromosomal/chr14/MAPQGE30/chr14_500kb.RAWexpected", header = F)
+
+chr14_raw$V1_factor <- (chr14_raw$V1 / 500000) + 1
+chr14_raw$V2_factor <- (chr14_raw$V2 / 500000) + 1
+
+for (i in 1:length(chr14_raw$V1_factor)){
+  index <- chr14_raw$V1_factor[i]
+  chr14_raw$V1_factor[i] <- chr14_Knorm$V1[index]
+}
+
+for (i in 1:length(chr14_raw$V2_factor)){
+  index <- chr14_raw$V2_factor[i]
+  chr14_raw$V2_factor[i] <- chr14_Knorm$V1[index]
+}
+
+for (i in 1:length(chr14_raw$V1)){
+  chr14_raw$distance[i] <- ((chr14_raw$V2[i] - chr14_raw$V1[i])/500000) + 1 
+}
+
+for (i in 1:length(chr14_raw$V1)){
+  norm_val <- chr14_raw_expected$V1[chr14_raw$distance[i]]
+  chr14_raw$expected_norm_val[i] <- norm_val
+}
+
+chr14_raw$norm_val <- chr14_raw$V3 / (chr14_raw$V1_factor *  chr14_raw$V2_factor)
+
+chr14_raw$O_E <- chr14_raw$norm_val / chr14_raw$expected_norm_val
+
+chr14_mat <- matrix(0, nrow=max(chr14_raw$V1)/500000, ncol=max(chr14_raw$V2)/500000)
+
+chr14_mat[cbind(chr14_raw$V1/500000, chr14_raw$V2/500000)] = chr14_raw$norm_val
+
+chr14_OE <- matrix(0, nrow=max(chr14_raw$V1)/500000, ncol=max(chr14_raw$V2)/500000)
+
+chr14_OE[cbind(chr14_raw$V1/500000, chr14_raw$V2/500000)] = chr14_raw$O_E
+  
+
+```
+
+get interaction matrix for intrachromosomal data, this is the generic function
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(karyoploteR)
+gene_info <- read.csv("~/Downloads/gtexGene.txt", sep='\t')
+gene_info <- as.tibble(gene_info)
+
+#returns list with component 1: contact matrix, component 2: coordinates, component 3: associated gene information
+intrachromosomal_interaction_matrix_500kb <- function(filename, chr_bp, chromosome){
+  chr_raw <- read.table(paste(filename, ".RAWobserved", sep=''), sep='\t')
+  chr_Knorm <- read.csv(paste(filename, ".RAWobserved", sep=''), header = F)
+  chr_raw_expected <- read.csv(paste(filename, ".RAWobserved", sep=''), header = F)
+  chr_raw$V1_factor <- (chr_raw$V1 / 500000) + 1
+  chr_raw$V2_factor <- (chr_raw$V2 / 500000) + 1
+  for (i in 1:length(chr_raw$V1_factor)){
+    index <- chr_raw$V1_factor[i]
+    chr_raw$V1_factor[i] <- chr_Knorm$V1[index]
+  }
+  for (i in 1:length(chr_raw$V2_factor)){
+    index <- chr_raw$V2_factor[i]
+    chr_raw$V2_factor[i] <- chr_Knorm$V1[index]
+  }
+  for (i in 1:length(chr_raw$V1)){
+    chr_raw$distance[i] <- ((chr_raw$V2[i] - chr_raw$V1[i])/500000) + 1 
+  }
+  for (i in 1:length(chr_raw$V1)){
+    norm_val <- chr_raw_expected$V1[chr_raw$distance[i]]
+    chr_raw$expected_norm_val[i] <- norm_val
+  }
+  chr_raw$norm_val <- chr_raw$V3 / (chr_raw$V1_factor *  chr_raw$V2_factor)
+
+  chr_raw$O_E <- chr_raw$norm_val / chr_raw$expected_norm_val
+
+  chr_mat <- matrix(0, nrow=max(chr_raw$V1)/500000, ncol=max(chr_raw$V2)/500000)
+
+  chr_mat[cbind(chr_raw$V1/500000, chr_raw$V2/500000)] = chr_raw$norm_val
+
+  chr_OE <- matrix(0, nrow=max(chr_raw$V1)/500000, ncol=max(chr_raw$V2)/500000)
+
+  chr_OE[cbind(chr_raw$V1/500000, chr_raw$V2/500000)] = chr_raw$O_E
+  
+  coordinates <- seq(from =1 , to= chr_bp, by=floor(chr_bp/500000))
+  
+  gene_info <- filter(gene_info, chr1 == chromosome)
+  
+    
+  return(list(chr_OE, coordinates, gene_info))
+}
+
+```
+
+Gene name/coordinates for each chromosome/need this for downstream analysis 
+```{r, warning = FALSE, message = FALSE}
+gene_info <- read.csv("~/Downloads/gtexGene.txt", sep='\t')
+gene_info <- as.tibble(gene_info)
+kp <- plotKaryotype()
+```
+
+map  to genome using chr14 as test
+length of chr14 is divided by 250 because there were 250 500kb 'chunks' in interaction matrix
+```{r, warning = FALSE, message = FALSE}
+chr14_gene_info <- filter(gene_info, chr1 == 'chr14')
+chr14_gene_info <- select(chr14_gene_info, 1:5)
+
+
+chr14_bp <- kp$chromosome.lengths["chr14"]
+
+
+chr14_500kb <- seq(from =1, to = kp$chromosome.lengths['chr14'][[1]], by = floor(kp$chromosome.lengths['chr14'][[1]]/250))
+
+
+start <- numeric()
+end <- numeric()
+
+for (i in 1:length(chr14_500kb)-1){
+  start[i] <- chr14_500kb[i]
+  end[i] <- chr14_500kb[i+1]
+}
+
+chr14_genes <- list()
+
+for (i in 1:length(start)){
+  genes <- filter(chr14_gene_info, X11868 > start[i] & X11868 < end[i]) %>% select(DDX11L1) 
+  ifelse(length(genes$DDX11L1) > 0, chr14_genes[[i]] <- genes$DDX11L1, chr14_genes[[i]] <- NA)
+}
+
+chr14_gene_coord <- tibble(start = start, end = end, genes = chr14_genes)
+
+```
+
+generic function to get the gene names and the coordinates 
+```{r, warning = FALSE, message = FALSE}
+#bins generated by getting the number of rows or columns in the chr_OE matrix
+genes_coordinates <- function(chromosome, bins){
+  chr_gene_info <- filter(gene_info, chr1 == paste(chromosome))
+  chr_gene_info <- select(chr_gene_info, 1:5)
+  
+  chr_bp <- kp$chromosome.lengths[paste(chromosome)]
+  chr_500kb <- seq(from =1, to = kp$chromosome.lengths[paste(chromosome)][[1]], by = floor(kp$chromosome.lengths[paste(chromosome)][[1]]/bins))
+
+
+  start <- numeric()
+  end <- numeric()
+
+  for (i in 1:length(chr_500kb)-1){
+    start[i] <- chr_500kb[i]
+    end[i] <- chr_500kb[i+1]
+  }
+
+  chr_genes <- list()
+
+  for (i in 1:length(start)){
+    genes <- filter(chr_gene_info, X11868 > start[i] & X11868 < end[i]) %>% select(DDX11L1) 
+    ifelse(length(genes$DDX11L1) > 0, chr_genes[[i]] <- genes$DDX11L1, chr_genes[[i]] <- NA)
+  }
+
+  chr_gene_coord <- tibble(start = start, end = end, genes = chr_genes)
+  
+  return(chr_gene_coord)
+}
+
+```
+
+go term analysis, example using two gene lists from the data on chromosome 14 (bins 80 and 70) to show how this enrichr works
+```{r, warning = FALSE, message = FALSE}
+library(enrichR)
+dbs <- listEnrichrDbs()
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015" , "ChEA_2016" ,"KEGG_2016")
+genes1 <- as.character(chr14_gene_coord$genes[[70]])
+genes2 <- as.character(chr14_gene_coord$genes[[80]])
+enriched <- enrichr(c(genes1, genes2), dbs)
+bp <- enriched[["GO_Molecular_Function_2015"]]
+bp$Term[1]
+bp$Overlap[1]
+bp$P.value[1]
+```
+
+global variables for the pval and term val for chr14
+empty matrix to be populated by p-values calculated from enrichR (however did not run this to knit)
+```{r, warning = FALSE, message = FALSE}
+mat_pval <<- matrix(0, nrow=250, ncol=250)
+mat_term <<- matrix(0, nrow=250, ncol=250)
+```
+
+```{r, warning = FALSE, message = FALSE}
+dbs <- c("GO_Molecular_Function_2015")
+
+
+GO_term_fun <- function(genes1, genes2){
+  if(is.na(genes1) && is.na(genes2)){
+    return(list(NA, NA))
+  } else {
+    enriched <- NULL
+    attempt <- 1
+    while(is.null(enriched) && attempt <= 30){
+      try(
+        enriched <- enrichr(c(genes1, genes2), dbs)
+      )
+      attempt <- attempt + 1
+      Sys.sleep(3)
+    } 
+    if (is.null(enriched)) {
+      stop('failed to submit after 10 tries')
+    }
+    
+    if (length(enriched$GO_Molecular_Function_2015$Term) == 0){
+      return(list(NA, NA))
+    } else {return(list(enriched$GO_Molecular_Function_2015$P.value[1], enriched$GO_Molecular_Function_2015$Term[1]))}
+  }
+}
+
+#takes in chr_gene_coord and the bin# i.e. the size of the chr_OE and returns a matrix with the associated p-values
+
+
+GO_term_val <- function(chromosome_coordinates_tib, row){
+  geneslist1 <- as.character(chromosome_coordinates_tib$genes[[row]])
+  for (i in row:250){
+    geneslist2 <- as.character(chromosome_coordinates_tib$genes[[i]])
+    info <- GO_term_fun(geneslist1, geneslist2)
+    mat_pval[row, i] <<- info[[1]]
+    mat_term[row, i] <<- info[[2]]
+  }
+}
+
+
+#did not run code below to knit HTML since it would take far too long
+for (ii in 1:250){
+  GO_term_val(chr14_gene_coord, ii)
+}
+
+
+#output p-value data in code below, not run for knitting HTML
+write.table(mat_term, "mat_term.txt", sep="\t")
+write.table(mat_pval, "mat_pval.txt", sep="\t")
+```
+
+
+### Here starts the chunks to make Interatctive plots
+```{r, warning = FALSE, message = FALSE}
+mat_term <- read.table("mat_term.txt", sep="\t")
+mat_pval <- read.table("mat_pval.txt", sep="\t")
+```
+
+#### Preparing data.
+```{r, warning = FALSE, message = FALSE}
+t_chr14_OE = t(chr14_OE)
+chr14_OE[lower.tri(chr14_OE, diag = FALSE)] <- t_chr14_OE[lower.tri(chr14_OE, diag = FALSE)]
+
+library(reshape2)
+library(ggvis)
+library(tidyverse)
+library(shiny)
+
+mat_pval <- round(mat_pval,3)
+
+melted_freq <- melt(chr14_OE)
+melted_term <- melt(as.matrix(mat_term))
+melted_pval <- melt(as.matrix(mat_pval))
+
+melted_df <- cbind.data.frame(gene1 = melted_freq$Var1, gene2 = melted_freq$Var2, freq = melted_freq$value, term = melted_term$value, pval = melted_pval$value) 
+```
+
+#### ggvis heatmap -- with hover
+```{r, warning = FALSE, message = FALSE}
+# need to add id to help show other columns
+melted_df$id <- 1:nrow(melted_df)  # Add an id column to use ask the key
+
+all_values <- function(x) {
+  if(is.null(x)) return(NULL)
+  row <- melted_df[melted_df$id == x$id, ]
+  paste0(names(row), ": ", format(row), collapse = "<br />")
+}
+
+melted_df %>% 
+    ggvis(x = ~gene1, y = ~gene2, fill = ~freq, key := ~id) %>%
+    layer_points() %>%
+    scale_numeric("fill", range = c("orange", "green")) %>%
+    add_tooltip(all_values, "hover") %>%
+    hide_axis("x") %>% hide_axis("y") 
+```
+
+
+#### ggvis heatmap -- select a subregion
+```{r, warning = FALSE, message = FALSE}
+melted_df %>% 
+    ggvis(~gene1, ~gene2, fill = ~freq) %>% 
+    filter(gene1 %in% eval(input_select(choices = unique(as.character(melted_df$gene1)), multiple=TRUE, label='Chunk1(please limit selection to 150x150 chunks)'))) %>%
+    filter(gene2 %in% eval(input_select(choices = unique(as.character(melted_df$gene2)), multiple=TRUE, label='Chunk2(please limit selection to 150x150 chunks)'))) %>%
+    layer_points() %>%
+    scale_numeric("fill", range = c("orange", "green")) %>%
+    add_tooltip(function(x) {paste("(", x$gene1,",", x$gene2, "):", x$freq)}, "hover") 
+```
+
+#### Scatter plot of the p-values vs interaction frequency for chromosome 14
+```{r, warning = FALSE, message = FALSE}
+library(ggplot2)
+ggplot(melted_df, aes(freq, pval)) + geom_point()
+
+```
+
+
+
+

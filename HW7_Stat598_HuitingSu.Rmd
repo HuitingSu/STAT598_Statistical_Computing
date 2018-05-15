@@ -1,0 +1,143 @@
+---
+title: "Reactive Programming and Monte Carlo Methods"
+author: "Huiting Su"
+date: "April 29, 2018"
+output: html_document
+---
+```{r, message=FALSE, warning=FALSE}
+library(shiny)
+library(ggvis)
+```
+
+## Problem 1: The law of large numbers
+
+### (a) Show evolution of the running mean with time.
+
+```{r}
+dat <- data.frame(indx = 0, value = c(0), running_mean = c(0))
+ddat <- reactive({
+ invalidateLater(200, NULL);
+ len <- length(dat$indx) + 1;
+ dat[len,] <<- c(len, rnorm(1),0)
+ dat$running_mean[len] <<- mean(dat$value)
+ dat
+})
+ddat %>% ggvis(x = ~indx, y = ~running_mean, key := ~indx) %>%
+ layer_paths()
+```
+
+### (b) Show histogram of value.
+```{r, message = FALSE}
+ddat %>% ggvis(x = ~value) %>%
+ layer_histograms()
+```
+
+## Problem 2: Monte Carlo Sampling
+### (a) Estimate distance between two points.
+```{r}
+set.seed(876523)
+p1 <- matrix(rnorm(5000*2, mean=0), 5000, 2)
+p2 <- matrix(rnorm(5000*2, mean=1), 5000, 2)
+distance <- sqrt((p2[,1]-p1[,1])^2 + (p2[,2]-p1[,2])^2)
+avg_dis <- mean(distance)
+print(avg_dis)
+```
+
+### (b) Repeat 1000 times, and show histogram of the estimations.
+```{r}
+estimate_dis <- function(rep){
+    p1 <- matrix(rnorm(5000*2, mean=0), 5000, 2)
+    p2 <- matrix(rnorm(5000*2, mean=1), 5000, 2)
+    distance <- sqrt((p2[,1]-p1[,1])^2 + (p2[,2]-p1[,2])^2)
+    avg_dis <- mean(distance)
+    result[rep] <<- avg_dis
+}
+
+result <<- numeric()
+set.seed(73487)
+for(i in 1:1000){
+    estimate_dis(i)
+}
+result <- as.data.frame(result)
+
+ggvis(result) %>%
+ layer_histograms(x=~result, fill.hover:='red')
+```
+
+## Problem 3: Importance Sampling
+
+### (a) Mean and standard deviation of the sum of 100 fair dice.
+
+$\mu_x = 100 \cdot 3.5 = 350$
+$\sigma^2_x = 100 \cdot 2.917 = 291.7$ 
+$\sigma_x = \sqrt{291.7} = 17.08$ 
+
+### (b) Show the simulation result match (a)
+
+```{r}
+set.seed(73487)
+dice <- rmultinom(1000, 100, c(1,1,1,1,1,1)/6)
+dice_sum <- t(dice) %*% c(1,2,3,4,5,6)
+
+avg_dice <- mean(dice_sum)
+sd_dice <- sd(dice_sum)
+cat(avg_dice, sd_dice)
+
+dice_sum <- as.data.frame(dice_sum)
+ggvis(dice_sum) %>%
+ layer_histograms(x=~V1, fill.hover:='red')
+
+sum(dice_sum > 450)
+```
+
+### (c) Calculate probability.
+```{r}
+pnorm(450, mean = avg_dice, sd = sd_dice, lower.tail = FALSE, log.p = TRUE)
+```
+
+### (d) Compare with simulation probability.
+
+```{r}
+sum(dice_sum > 450)/1000
+```
+
+### (e) Simulate biased dice.
+```{r}
+set.seed(73487)
+die_biased <- rmultinom(1000, 100, c(1,2,3,4,5,6)/21)
+biased_sum <- die_biased[1,] + 2 * die_biased[2,] + 3 * die_biased[3,] + 4 * die_biased[4,] + 5 * die_biased[5,] + 6 * die_biased[6,]
+
+avg_biased <- mean(biased_sum)
+sd_biased <- sd(biased_sum)
+cat(avg_biased, sd_biased)
+
+biased_sum <- as.data.frame(biased_sum)
+ggvis(biased_sum) %>%
+ layer_histograms(x=~biased_sum, fill.hover:='red')
+
+sum(biased_sum > 450)
+```
+
+### (f) Probability.
+
+```{r}
+logp =  log(1/21)*die_biased[1,] + log(2/21)*die_biased[2,]  + log(3/21)*die_biased[3,] + log(4/21)*die_biased[4,] + log(5/21)*die_biased[5,] + log(6/21)*die_biased[6,]
+head(logp)
+```
+
+### (g) Log-probability under fair dice.
+```{r}
+logpfair =  log(1/6)*colSums(dice)
+head(logpfair)
+```
+
+### (h)
+```{r}
+w = logpfair / logp
+indicator = biased_sum > 450
+sum(indicator * w)/1000
+```
+
+
+
+
